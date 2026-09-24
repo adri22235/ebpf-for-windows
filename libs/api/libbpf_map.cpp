@@ -269,13 +269,26 @@ bpf_map_update_elem(int fd, const void* key, const void* value, uint64_t flags)
     return libbpf_result_err(ebpf_map_update_element(fd, key, value, flags));
 }
 
+// The batch opts are optional, as in libbpf: a NULL opts selects the default (zero) flags.
+static inline uint64_t
+_batch_opts_flags(_In_opt_ const struct bpf_map_batch_opts* opts)
+{
+    return (opts != nullptr) ? opts->flags : 0;
+}
+
+static inline uint64_t
+_batch_opts_elem_flags(_In_opt_ const struct bpf_map_batch_opts* opts)
+{
+    return (opts != nullptr) ? opts->elem_flags : 0;
+}
+
 int
 bpf_map_update_batch(int fd, const void* keys, const void* values, __u32* count, const struct bpf_map_batch_opts* opts)
 {
-    if (opts->flags != 0) {
+    if (_batch_opts_flags(opts) != 0) {
         return libbpf_result_err(EBPF_INVALID_ARGUMENT);
     }
-    return libbpf_result_err(ebpf_map_update_element_batch(fd, keys, values, count, opts->elem_flags));
+    return libbpf_result_err(ebpf_map_update_element_batch(fd, keys, values, count, _batch_opts_elem_flags(opts)));
 }
 
 int
@@ -287,10 +300,10 @@ bpf_map_delete_elem(int fd, const void* key)
 int
 bpf_map_delete_batch(int fd, const void* keys, __u32* count, const struct bpf_map_batch_opts* opts)
 {
-    if (opts->flags != 0) {
+    if (_batch_opts_flags(opts) != 0) {
         return libbpf_result_err(EBPF_INVALID_ARGUMENT);
     }
-    return libbpf_result_err(ebpf_map_delete_element_batch(fd, keys, count, opts->elem_flags));
+    return libbpf_result_err(ebpf_map_delete_element_batch(fd, keys, count, _batch_opts_elem_flags(opts)));
 }
 
 int
@@ -309,11 +322,11 @@ bpf_map_lookup_batch(
     __u32* count,
     const struct bpf_map_batch_opts* opts)
 {
-    if (opts->flags != 0) {
+    if (_batch_opts_flags(opts) != 0) {
         return libbpf_result_err(EBPF_INVALID_ARGUMENT);
     }
     return libbpf_result_err(
-        ebpf_map_lookup_element_batch(fd, in_batch, out_batch, keys, values, count, opts->elem_flags));
+        ebpf_map_lookup_element_batch(fd, in_batch, out_batch, keys, values, count, _batch_opts_elem_flags(opts)));
 }
 
 int
@@ -332,8 +345,11 @@ bpf_map_lookup_and_delete_batch(
     __u32* count,
     const struct bpf_map_batch_opts* opts)
 {
-    return libbpf_result_err(
-        ebpf_map_lookup_and_delete_element_batch(fd, in_batch, out_batch, keys, values, count, opts->flags));
+    if (_batch_opts_flags(opts) != 0) {
+        return libbpf_result_err(EBPF_INVALID_ARGUMENT);
+    }
+    return libbpf_result_err(ebpf_map_lookup_and_delete_element_batch(
+        fd, in_batch, out_batch, keys, values, count, _batch_opts_elem_flags(opts)));
 }
 
 int

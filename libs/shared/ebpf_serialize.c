@@ -183,14 +183,15 @@ ebpf_deserialize_map_info_array(
         ebpf_map_info_t* destination;
         size_t destination_pin_path_length;
 
-        // Check if sufficient input buffer remaining.
-        if (buffer_left < sizeof(ebpf_serialized_map_info_t)) {
+        // Check if sufficient input buffer remaining. The pin path is variable length, so only the fixed-size
+        // header is required here; the pin path length is validated below.
+        if (buffer_left < EBPF_OFFSET_OF(ebpf_serialized_map_info_t, pin_path)) {
             EBPF_LOG_MESSAGE_UINT64_UINT64(
                 EBPF_TRACELOG_LEVEL_WARNING,
                 EBPF_TRACELOG_KEYWORD_BASE,
                 "Insufficient input buffer remaining",
                 buffer_left,
-                sizeof(ebpf_serialized_map_info_t));
+                EBPF_OFFSET_OF(ebpf_serialized_map_info_t, pin_path));
             result = EBPF_INVALID_ARGUMENT;
             goto Exit;
         }
@@ -503,8 +504,9 @@ ebpf_deserialize_program_info(
     }
     local_program_info->program_type_descriptor = local_program_type_descriptor;
 
-    // Check if sufficient input buffer remaining.
-    if (buffer_left < sizeof(ebpf_serialized_program_type_descriptor_t)) {
+    // Check if sufficient input buffer remaining. The name is variable length, so only the fixed-size header is
+    // required here; the name length is validated below.
+    if (buffer_left < EBPF_OFFSET_OF(ebpf_serialized_program_type_descriptor_t, name)) {
         result = EBPF_INVALID_ARGUMENT;
         goto Exit;
     }
@@ -573,16 +575,18 @@ ebpf_deserialize_program_info(
         goto Exit;
     }
 
-    // Advance the input buffer current pointer to the end of program type descriptor section.
-    current += serialized_program_type_descriptor->size;
+    // Advance the input buffer current pointer to the end of program type descriptor section. Use the validated
+    // lengths rather than the serialized size field so that current stays consistent with buffer_left.
+    current += EBPF_OFFSET_OF(ebpf_serialized_program_type_descriptor_t, name) +
+               serialized_program_type_descriptor->name_length;
 
     if (buffer_left == 0) {
         // No buffer left. This means there are no helper function prototypes in the input buffer.
         goto Exit;
     }
 
-    // Check if sufficient buffer left for ebpf_serialized_helper_function_prototype_array_t.
-    if (buffer_left < sizeof(ebpf_serialized_helper_function_prototype_array_t)) {
+    // Check if sufficient buffer left for the ebpf_serialized_helper_function_prototype_array_t header.
+    if (buffer_left < EBPF_OFFSET_OF(ebpf_serialized_helper_function_prototype_array_t, prototypes)) {
         result = EBPF_INVALID_ARGUMENT;
         goto Exit;
     }
@@ -628,8 +632,9 @@ ebpf_deserialize_program_info(
         ebpf_helper_function_prototype_t* helper_prototype = &local_helper_prototype_array[helper_function_index];
         char* local_helper_function_name;
 
-        // Check if sufficient input buffer left for ebpf_serialized_helper_function_prototype_t.
-        if (buffer_left < sizeof(ebpf_serialized_helper_function_prototype_t)) {
+        // Check if sufficient input buffer left for the ebpf_serialized_helper_function_prototype_t header. The name
+        // is variable length and is validated below.
+        if (buffer_left < EBPF_OFFSET_OF(ebpf_serialized_helper_function_prototype_t, name)) {
             result = EBPF_INVALID_ARGUMENT;
             goto Exit;
         }
@@ -679,8 +684,10 @@ ebpf_deserialize_program_info(
             goto Exit;
         }
 
-        // Advance the current pointer to the end of the helper function prototype.
-        current += serialized_helper_prototype->size;
+        // Advance the current pointer to the end of the helper function prototype. Use the validated lengths rather
+        // than the serialized size field so that current stays consistent with buffer_left.
+        current += EBPF_OFFSET_OF(ebpf_serialized_helper_function_prototype_t, name) +
+                   serialized_helper_prototype->name_length;
     }
 
 Exit:
