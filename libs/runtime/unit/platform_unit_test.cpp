@@ -1590,7 +1590,9 @@ bitmap_test()
     TEST_CASE("bitmap_test:" #X, "[platform]") { bitmap_test<X, Y>(); }
 
 BIT_MASK_TEST(33, true);
+BIT_MASK_TEST(64, false);
 BIT_MASK_TEST(65, false);
+BIT_MASK_TEST(128, true);
 BIT_MASK_TEST(129, true);
 BIT_MASK_TEST(1025, false);
 
