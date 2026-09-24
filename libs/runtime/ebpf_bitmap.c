@@ -170,7 +170,7 @@ ebpf_bitmap_forward_search_next_bit(_Inout_ ebpf_bitmap_cursor_t* cursor)
             internal_cursor->next_bit_offset += BITS_IN_BLOCK;
 
             // Are there any more blocks to search?
-            if (internal_cursor->next_bit_offset >= internal_cursor->bitmap->bit_count) {
+            if (internal_cursor->next_bit_offset > internal_cursor->bitmap->bit_count) {
                 return MAXSIZE_T;
             }
 
