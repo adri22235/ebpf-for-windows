@@ -1525,6 +1525,98 @@ TEST_CASE("serialize_program_info_test", "[platform]")
     ebpf_program_info_free(out_program_info);
 }
 
+// Serialized entries end with a variable-length name, so a valid entry can be shorter than the sizeof() of the
+// serialized struct. Verify that such entries round-trip when they are the last entry in the buffer.
+TEST_CASE("serialize_short_names_test", "[platform]")
+{
+    _test_helper test_helper;
+    test_helper.initialize();
+
+    ebpf_context_descriptor_t context_descriptor = {32, 0, 8, -1};
+    GUID program_type_test = {0x7ebe418c, 0x76dd, 0x4c2c, {0x99, 0xbc, 0x5c, 0x48, 0xa2, 0x30, 0x4b, 0x90}};
+    ebpf_program_type_descriptor_t program_type = {
+        EBPF_PROGRAM_TYPE_DESCRIPTOR_HEADER, "bind", &context_descriptor, program_type_test};
+    ebpf_helper_function_prototype_t helper_prototype[] = {
+        {EBPF_HELPER_FUNCTION_PROTOTYPE_HEADER,
+         1000,
+         "h",
+         EBPF_RETURN_TYPE_INTEGER,
+         {EBPF_ARGUMENT_TYPE_PTR_TO_MAP, EBPF_ARGUMENT_TYPE_PTR_TO_MAP_KEY}}};
+
+    for (bool with_helpers : {false, true}) {
+        ebpf_program_info_t in_program_info = {
+            EBPF_PROGRAM_INFORMATION_HEADER,
+            &program_type,
+            with_helpers ? static_cast<uint32_t>(EBPF_COUNT_OF(helper_prototype)) : 0,
+            with_helpers ? helper_prototype : nullptr};
+        size_t required_length;
+        size_t serialized_length;
+        ebpf_program_info_t* out_program_info = nullptr;
+
+        REQUIRE(
+            ebpf_serialize_program_info(&in_program_info, nullptr, 0, &serialized_length, &required_length) ==
+            EBPF_INSUFFICIENT_BUFFER);
+        std::vector<uint8_t> buffer(required_length);
+        REQUIRE(
+            ebpf_serialize_program_info(
+                &in_program_info, buffer.data(), buffer.size(), &serialized_length, &required_length) == EBPF_SUCCESS);
+
+        REQUIRE(ebpf_deserialize_program_info(serialized_length, buffer.data(), &out_program_info) == EBPF_SUCCESS);
+        _Analysis_assume_(out_program_info != nullptr);
+        REQUIRE(strcmp(out_program_info->program_type_descriptor->name, program_type.name) == 0);
+        REQUIRE(
+            out_program_info->count_of_program_type_specific_helpers ==
+            in_program_info.count_of_program_type_specific_helpers);
+        if (with_helpers) {
+            REQUIRE(strcmp(out_program_info->program_type_specific_helper_prototype[0].name, "h") == 0);
+        }
+        ebpf_program_info_free(out_program_info);
+    }
+
+    const char* pin_paths[] = {"\\ebpf\\map\\0", "m", ""};
+    ebpf_map_info_internal_t internal_map_info_array[EBPF_COUNT_OF(pin_paths)] = {};
+    for (size_t i = 0; i < EBPF_COUNT_OF(pin_paths); i++) {
+        internal_map_info_array[i].definition.type = BPF_MAP_TYPE_HASH;
+        internal_map_info_array[i].definition.key_size = static_cast<uint32_t>(i + 1);
+        internal_map_info_array[i].pin_path.length = strlen(pin_paths[i]);
+        internal_map_info_array[i].pin_path.value =
+            const_cast<uint8_t*>(reinterpret_cast<const uint8_t*>(pin_paths[i]));
+    }
+
+    // Serialize and deserialize every prefix of the array, so each entry is the last entry once.
+    for (size_t count = 1; count <= EBPF_COUNT_OF(pin_paths); count++) {
+        uint16_t map_count = static_cast<uint16_t>(count);
+        size_t required_length;
+        size_t serialized_length;
+        ebpf_map_info_t* map_info_array = nullptr;
+
+        REQUIRE(
+            ebpf_serialize_internal_map_info_array(
+                map_count, internal_map_info_array, nullptr, 0, &serialized_length, &required_length) ==
+            EBPF_INSUFFICIENT_BUFFER);
+        std::vector<uint8_t> buffer(required_length);
+        REQUIRE(
+            ebpf_serialize_internal_map_info_array(
+                map_count,
+                internal_map_info_array,
+                buffer.data(),
+                buffer.size(),
+                &serialized_length,
+                &required_length) == EBPF_SUCCESS);
+
+        REQUIRE(
+            ebpf_deserialize_map_info_array(serialized_length, buffer.data(), map_count, &map_info_array) ==
+            EBPF_SUCCESS);
+        _Analysis_assume_(map_info_array != nullptr);
+        for (uint16_t i = 0; i < map_count; i++) {
+            REQUIRE(map_info_array[i].definition.key_size == internal_map_info_array[i].definition.key_size);
+            const char* pin_path = map_info_array[i].pin_path ? map_info_array[i].pin_path : "";
+            REQUIRE(strcmp(pin_path, pin_paths[i]) == 0);
+        }
+        ebpf_map_info_array_free(map_count, map_info_array);
+    }
+}
+
 TEST_CASE("state_test", "[state]")
 {
     _test_helper test_helper;
