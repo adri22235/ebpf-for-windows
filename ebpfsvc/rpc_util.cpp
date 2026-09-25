@@ -7,6 +7,7 @@
 #include <windows.h>
 #include <malloc.h>
 #include <sddl.h>
+#include <stdio.h>
 
 #include "rpc_interface_s.c"
 
@@ -73,7 +74,9 @@ Exit:
         if (registered) {
             RPC_STATUS unregister_status = RpcServerUnregisterIf(nullptr, nullptr, true);
             if (unregister_status != RPC_S_OK) {
-                OutputDebugStringA("ebpfsvc: RpcServerUnregisterIf failed during initialization cleanup.\n");
+                char msg[128];
+                sprintf_s(msg, "ebpfsvc: RpcServerUnregisterIf failed during initialization cleanup (status=%lu).\n", unregister_status);
+                OutputDebugStringA(msg);
             }
         }
     }
@@ -102,7 +105,9 @@ shutdown_rpc_server()
 
     status = RpcServerUnregisterIf(EBPF_SERVICE_INTERFACE_HANDLE, nullptr, true);
     if (status != RPC_S_OK) {
-        OutputDebugStringA("ebpfsvc: RpcServerUnregisterIf failed during shutdown.\n");
+        char msg[128];
+        sprintf_s(msg, "ebpfsvc: RpcServerUnregisterIf failed during shutdown (status=%lu).\n", status);
+        OutputDebugStringA(msg);
         goto Exit;
     }
 

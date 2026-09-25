@@ -5,6 +5,8 @@
 #include "rpc_util.h"
 #include "svc_common.h"
 
+#include <stdio.h>
+
 #define SERVICE_NAME TEXT("eBPFSvc")
 
 SERVICE_STATUS ebpf_service_status;
@@ -155,9 +157,9 @@ service_main(unsigned long argc, _In_reads_(argc) wchar_t** argv)
 void
 service_report_event(_In_z_ wchar_t* function)
 {
-    OutputDebugStringW(L"ebpfsvc: failure in ");
-    OutputDebugStringW(function);
-    OutputDebugStringW(L"\n");
+    wchar_t msg[256];
+    swprintf_s(msg, L"ebpfsvc: failure in %s\n", function);
+    OutputDebugStringW(msg);
 }
 
 /**
