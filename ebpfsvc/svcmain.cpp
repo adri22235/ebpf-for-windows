@@ -155,8 +155,9 @@ service_main(unsigned long argc, _In_reads_(argc) wchar_t** argv)
 void
 service_report_event(_In_z_ wchar_t* function)
 {
-    UNREFERENCED_PARAMETER(function);
-    return;
+    OutputDebugStringW(L"ebpfsvc: failure in ");
+    OutputDebugStringW(function);
+    OutputDebugStringW(L"\n");
 }
 
 /**

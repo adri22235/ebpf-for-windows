@@ -73,7 +73,7 @@ Exit:
         if (registered) {
             RPC_STATUS unregister_status = RpcServerUnregisterIf(nullptr, nullptr, true);
             if (unregister_status != RPC_S_OK) {
-                // TODO: Add a trace that something happened.
+                OutputDebugStringA("ebpfsvc: RpcServerUnregisterIf failed during initialization cleanup.\n");
             }
         }
     }
@@ -102,7 +102,7 @@ shutdown_rpc_server()
 
     status = RpcServerUnregisterIf(EBPF_SERVICE_INTERFACE_HANDLE, nullptr, true);
     if (status != RPC_S_OK) {
-        // TODO: Add a trace that something happened.
+        OutputDebugStringA("ebpfsvc: RpcServerUnregisterIf failed during shutdown.\n");
         goto Exit;
     }
 

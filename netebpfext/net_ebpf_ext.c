@@ -424,6 +424,11 @@ net_ebpf_extension_get_hook_id_from_wfp_layer_id(uint16_t wfp_layer_id)
         hook_id = EBPF_HOOK_ALE_CONNECT_REDIRECT_V6;
         break;
     default:
+        EBPF_EXT_LOG_MESSAGE_UINT64(
+            EBPF_EXT_TRACELOG_LEVEL_ERROR,
+            EBPF_EXT_TRACELOG_KEYWORD_EXTENSION,
+            "net_ebpf_extension_get_hook_id_from_wfp_layer_id: unexpected WFP layer ID",
+            wfp_layer_id);
         ASSERT(FALSE);
         break;
     }
@@ -439,6 +444,11 @@ net_ebpf_extension_get_callout_id_for_hook(net_ebpf_extension_hook_id_t hook_id)
     if (hook_id < EBPF_COUNT_OF(_net_ebpf_ext_wfp_callout_states)) {
         callout_id = _net_ebpf_ext_wfp_callout_states[hook_id].assigned_callout_id;
     } else {
+        EBPF_EXT_LOG_MESSAGE_UINT64(
+            EBPF_EXT_TRACELOG_LEVEL_ERROR,
+            EBPF_EXT_TRACELOG_KEYWORD_EXTENSION,
+            "net_ebpf_extension_get_callout_id_for_hook: hook_id out of bounds",
+            hook_id);
         ASSERT(FALSE);
     }
 
